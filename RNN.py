@@ -98,6 +98,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 def run_fold(series, tr, te, Model, p=6, n_hidden=8, lr=1e-2, wd=1e-4, seed=0):
     torch.manual_seed(seed)
+    series = series['Value'].to_numpy()
     # rescale the values for tanh activation
     scaler = MinMaxScaler((-1, 1)).fit(series[tr].reshape(-1, 1))
     s = scaler.transform(series.reshape(-1, 1)).ravel()
@@ -121,3 +122,13 @@ def tune(series, Model, grid, n_splits=3):
         val = np.mean([run_fold(series, tr, te, Model, p=p, n_hidden=h, lr=lr, wd=wd)["val_loss"] for tr, te in TimeSeriesSplit(n_splits=n_splits).split(series)])
         rows.append({"p": p, "n_hidden": h, "lr": lr, "wd": wd, "val_loss": val})
     return pd.DataFrame(rows).sort_values("val_loss")
+
+def diff(df, type='none'):
+    df = df.sort_values("Date").reset_index(drop=True) # so that each df has dates in ascending order
+    if type == "logdiff":
+        values = np.log(df["Value"]).diff()
+    elif type == "diff":
+        values = df["Value"].diff()
+    else:
+        return df
+    return pd.DataFrame({"Date": df["Date"], "Value": values}).dropna().reset_index(drop=True)
